@@ -1,42 +1,18 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { Table, Container, Row, Col, Button } from 'react-bootstrap';
-import { GetCombinedAVSData } from '../../services/eigenlayer';
+import { GetCombinedAVSData } from '../../services/nodezilla';
 import Layout from '../../app/layout'; // Import the Layout component
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../../app/globals.css';
 import Image from 'next/image';
 
-const HomePage = ({ initialData, initialNextUri }) => {
+const HomePage = ({ allNodes }) => {
   const router = useRouter();
-  const [avsList, setAvsList] = useState(initialData || []);
-  const [nextUri, setNextUri] = useState(initialNextUri || '');
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-
-  const fetchMoreData = async () => {
-    setLoading(true);
-    try {
-      const { combinedData, nextUri: newNextUri } = await GetCombinedAVSData(8, 0, 'num_operators desc', nextUri);
-      setAvsList([...avsList, ...combinedData]);
-      if (newNextUri) {
-        setNextUri(newNextUri);
-      } else {
-        setHasMore(false);
-      }
-    } catch (error) {
-      console.error('Error fetching more data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [avsList, setAvsList] = useState( allNodes || []);
 
   const handleNumOperatorsClick = (avs) => {
-    router.push(`/app/avs/${avs.avs_contract_address}`);
-  };
-
-  const formatNumber = (number, format) => {
-    return new Intl.NumberFormat('en-US', format).format(number);
+    router.push(`/app/avs/${avs.operator_contract_address}`);
   };
 
   return (
@@ -57,44 +33,27 @@ const HomePage = ({ initialData, initialNextUri }) => {
                     <th>Description</th>
                     <th>Twitter</th>
                     <th>Website</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>Current # of Operators</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>Total TVL</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>Current # of Stakers</th>
+                    <th style={{ whiteSpace: 'nowrap' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {avsList.map(avs => (
-                    <tr key={avs.avs_contract_address}>
+                    <tr key={avs.operator_contract_address} onClick={() => handleNumOperatorsClick(avs)} className='clickable-cell'>
                       <td>
-                        <Image src={avs.logo} alt={`${avs.avs_name} logo`} width={50} height={50} />
+                        <img src={avs.logo} alt={`${avs.operator_name} logo`} width={50} height={50} />
                       </td>
-                      <td>{avs.avs_name}</td>
+                      <td>{avs.operator_name}</td>
                       <td>{avs.description}</td>
                       <td><a href={avs.twitter} target="_blank" rel="noopener noreferrer">Twitter</a></td>
                       <td><a href={avs.website} target="_blank" rel="noopener noreferrer">Website</a></td>
-                      <td
-                        className="clickable-cell"
-                        onClick={() => handleNumOperatorsClick(avs)}
-                      >
-                        {avs.num_operators}
+                      <td>
+                        {avs.status}
                       </td>
-                      <td>{formatNumber(avs.total_TVL, { style: 'decimal', maximumFractionDigits: 2 })}</td>
-                      <td>{formatNumber(avs.num_stakers, { style: 'decimal', maximumFractionDigits: 0 })}</td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
             </div>
-            {/* 
-            {hasMore && (
-              <div className="text-center mt-4">
-                <Button onClick={fetchMoreData} disabled={loading}>
-                  {loading ? 'Loading...' : 'Load More'}
-                </Button>
-              </div>
-            )}
-            */}
-
           </Col>
         </Row>
       </Container>
@@ -104,11 +63,12 @@ const HomePage = ({ initialData, initialNextUri }) => {
 
 export async function getStaticProps() {
   try {
-    const { combinedData, nextUri } = await GetCombinedAVSData(8, 0, 'num_operators desc');
-    return { props: { initialData: combinedData, initialNextUri: nextUri || '' } };
+    const allNodes = await GetCombinedAVSData(8, 0, 'num_operators desc');
+
+    return { props: { allNodes: allNodes } };
   } catch (error) {
     console.error('Error fetching AVS data:', error);
-    return { props: { initialData: [], initialNextUri: '' } };
+    return { props: { allNodes: [] } };
   }
 }
 

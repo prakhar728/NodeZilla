@@ -16,12 +16,5 @@ nodes_collection = db["nodes"]
 
 
 def get_db_for_tsdb(address):
-    collection_name = "time_series_node" + address
-
-    if collection_name not in db.list_collection_names():
-        # Create a time series collection if it doesn't exist
-        db.create_collection(
-            collection_name,
-        )
-    
+    collection_name = "time_series_node" + address    
     return db[collection_name]

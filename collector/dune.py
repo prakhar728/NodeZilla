@@ -51,9 +51,9 @@ def format_time(timestamp_str):
 
 ############################################# Functions ############################
 
-# Fetch all the metadata for 100 operators and store it in the database. This function should run once to populate only a 100 operators
+# Fetch all the metadata for 300 operators and store it in the database. This function should run once to populate only a 100 operators
 def get_all_operators():
-    querystring = { "limit" : "100" }
+    querystring = { "limit" : "300" }
     request_url = DUNE_URL + ALL_OPS
 
     try:
@@ -62,6 +62,7 @@ def get_all_operators():
         nodes = res['result']['rows']
 
         for node in nodes:
+            node['status'] = 'inactive'
             inserted_node = db.nodes_collection.insert_one(
                 node
             )
@@ -144,7 +145,7 @@ def populate_time_series():
                     result = f"({joined_elements})"
                     querystring = { 
                         "limit" : "10",
-                        "filters": "operator_contract_address in" + result,
+                        "filters": "operator_contract_address in " + result,
                     }
 
                     response = requests.get(request_url, headers=headers, params=querystring)
@@ -153,22 +154,26 @@ def populate_time_series():
 
                     timestamp = format_time(res['execution_ended_at'])
                     values = res['result']['rows']
-
+                    result = db.nodes_collection.update_many({}, {'$unset': {"staus": ""}})
                     for value in values:
                         address = value['operator_contract_address']
 
                         collection = db.get_db_for_tsdb(address)
+
+                        filter = {"operator_contract_address": address}
+
+                        update = {"$set": {"status": "active"}}
+
+                        db.nodes_collection.update_one(filter, update)
 
                         new_t = collection.insert_one({
                             'timestamp': timestamp,
                             'address': address,
                             'value': value
                         })
-                        print(new_t)
 
                     temp_address = []
-                    time.sleep(2)
-                    print("populated 10")
+                    print("batch success")
             print("Populated time series db")
             time.sleep(20) 
         except requests.exceptions.HTTPError as http_err:
@@ -192,5 +197,4 @@ def main():
 
 
 if __name__ == "__main__":
-  main()
- 
+    main()

@@ -5,6 +5,7 @@ import { GetCombinedOperatorsData } from '../../../services/eigenlayer';
 import Layout from '../../../app/layout'; 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Image from 'next/image';
+import { GetOperatorData } from '../../../services/nodezilla';
 
 const AVSDetail = () => {
   const router = useRouter();
@@ -12,20 +13,17 @@ const AVSDetail = () => {
 
   const [operatorData, setOperatorData] = useState([]);
   const [avsName, setAvsName] = useState('');
-  const batchStartRef = useRef(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  const fetchOperatorsData = useCallback(async (avsAddress) => {
+  const fetchOperatorsData = useCallback(async (operatorAddress) => {
     try {
       setLoading(true);
-      const { combinedData, hasMore, avsName } = await GetCombinedOperatorsData(avsAddress, batchStartRef.current, 10);
-      setOperatorData(prevData => [...prevData, ...combinedData]);
-      batchStartRef.current += 10;
-      setHasMore(hasMore);
-      setAvsName(avsName);
+      const data = await GetOperatorData(operatorAddress);
+
+      setOperatorData(data);
     } catch (error) {
-      console.error('Error fetching operators data:', error);
+      console.error("Error fetching operators' data:", error);
     } finally {
       setLoading(false);
     }
@@ -37,9 +35,6 @@ const AVSDetail = () => {
     }
   }, [id, fetchOperatorsData]);
 
-  const loadMore = () => {
-    fetchOperatorsData(id);
-  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Invalid Date';
@@ -89,13 +84,6 @@ const AVSDetail = () => {
                 </tbody>
               </Table>
             </div>
-            {hasMore && (
-              <div className="text-center mt-4">
-                <Button onClick={loadMore} disabled={loading}>
-                  {loading ? 'Loading...' : 'Load More'}
-                </Button>
-              </div>
-            )}
           </Col>
         </Row>
       </Container>

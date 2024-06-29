@@ -94,8 +94,6 @@ p {
 
 .clickable-cell {
   cursor: pointer;
-  color: blue;
-  text-decoration: underline;
 }
 
 .clickable-cell:hover {
