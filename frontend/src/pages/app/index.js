@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Table, Container, Row, Col, Button } from 'react-bootstrap';
 import { GetCombinedAVSData } from '../../services/nodezilla';
 import Layout from '../../app/layout'; // Import the Layout component
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../../app/globals.css';
-import Image from 'next/image';
 
 const HomePage = ({ allNodes }) => {
   const router = useRouter();
   const [avsList, setAvsList] = useState( allNodes || []);
 
+  
   const handleNumOperatorsClick = (avs) => {
-    router.push(`/app/avs/${avs.operator_contract_address}`);
+    if (avs.status == 'active')
+      router.push(`/app/avs/${avs.operator_contract_address}`);
   };
+
+
+  const fetchAllOperators = async() => {
+    const allNodes = await GetCombinedAVSData();
+
+    setAvsList(allNodes);
+  }
+
+
+  useEffect(() => {
+    fetchAllOperators()
+  }, [])
+
 
   return (
     <Layout>  {/* Wrap the content with Layout */}
@@ -63,7 +77,7 @@ const HomePage = ({ allNodes }) => {
 
 export async function getStaticProps() {
   try {
-    const allNodes = await GetCombinedAVSData(8, 0, 'num_operators desc');
+    const allNodes = await GetCombinedAVSData();
 
     return { props: { allNodes: allNodes } };
   } catch (error) {

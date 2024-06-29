@@ -32,7 +32,7 @@ export async function GetAVSData(avsAddresses: string[]) {
 
 export async function GetCombinedAVSData() {
     try {
-        const res = await axios.get('http://127.0.0.1:8000/all');
+        const res = await axios.get('http://127.0.0.1:8000/all/');
         const nodes = res.data;
 
         return nodes;
