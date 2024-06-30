@@ -18,7 +18,7 @@ const AVSDetail = () => {
       <Container fluid>
         <Row>
           <Col>
-            <h1 className="text-center my-4">AVS Explorer</h1>
+            <h1 className="text-center my-4">Metric Explorer</h1>
             <h2 className="text-center my-4">Operator {name}</h2>
             
             <div className='toggle-switch'>

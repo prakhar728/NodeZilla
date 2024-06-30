@@ -42,7 +42,7 @@ const Index = () => {
             <p>Get insights about the AVS nodes, subscribe to their metrics, get their metadata and get notifed about their operations. All in one place!</p>
             <div className="btn-container">
               <button className="btn-primary"><Link href="/app">Go to app</Link></button>
-              <button className="btn-secondary"><Link href="http://localhost:8000">Explore API</Link></button>
+              <button className="btn-secondary"><Link href="https://nodezilla.onrender.com/docs">Explore API</Link></button>
             </div>
             <div className="label">
               <p>Total Volume Locked</p>
