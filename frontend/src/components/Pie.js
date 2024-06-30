@@ -32,7 +32,7 @@ const PieChartComponent = ({ operatorAddress, setname }) => {
 
       interval = setInterval(() => {
         fetchOperatorData(operatorAddress);
-      }, 2000);
+      }, 30000);
     }
 
     return () => {
