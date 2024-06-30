@@ -34,12 +34,7 @@ const HomePage = ({ allNodes }) => {
   }
 
 
-  useEffect(() => {
-    fetchAllOperators()
-  }, [])
-
-
-  return (
+   return (
     <Layout>  {/* Wrap the content with Layout */}
       <Container fluid>
         <Row>
