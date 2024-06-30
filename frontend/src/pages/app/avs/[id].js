@@ -11,6 +11,7 @@ const AVSDetail = () => {
   const router = useRouter();
   const { id } = router.query;
   const [currentChart, setCurrentChart] = useState('Line');
+  const [name, setname] = useState('');
 
   return (
     <Layout>
@@ -18,7 +19,7 @@ const AVSDetail = () => {
         <Row>
           <Col>
             <h1 className="text-center my-4">AVS Explorer</h1>
-            <h2 className="text-center my-4">Operator {id}</h2>
+            <h2 className="text-center my-4">Operator {name}</h2>
             
             <div className='toggle-switch'>
               <FaChartLine />
@@ -37,8 +38,8 @@ const AVSDetail = () => {
             </div>
             <div className='charts'>
               {id && (currentChart == 'Line' ? 
-                <LineComponent operatorAddress={id}/> :
-                <PieChartComponent operatorAddress={id}/>
+                <LineComponent operatorAddress={id} setname={setname}/> :
+                <PieChartComponent operatorAddress={id} setname={setname}/>
                 )
               }
            

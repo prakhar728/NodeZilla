@@ -3,10 +3,8 @@ import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { GetOperatorData } from '../services/nodezilla';
 
-const LineComponent = ({ operatorAddress }) => {
+const LineComponent = ({ operatorAddress, setname }) => {
     const [operatorData, setOperatorData] = useState([]);
-    const [avsName, setAvsName] = useState('');
-    const [hasMore, setHasMore] = useState(true);
     const [loading, setLoading] = useState(false);
     const [chartData, setChartData] = useState(null);
     const [timestamps, settimestamps] = useState([]);
@@ -56,9 +54,21 @@ const LineComponent = ({ operatorAddress }) => {
     }, []);
 
     useEffect(() => {
-        if (operatorAddress) {
+      let interval;
+  
+      if (operatorAddress) {
+        fetchOperatorsData(operatorAddress);
+  
+        interval = setInterval(() => {
           fetchOperatorsData(operatorAddress);
+        }, 30000);
+      }
+  
+      return () => {
+        if (interval) {
+          clearInterval(interval);
         }
+      };
     }, [operatorAddress, fetchOperatorsData]);
 
 
@@ -79,6 +89,7 @@ const LineComponent = ({ operatorAddress }) => {
             // Extracting labels
             const ex = time_series[0];
             const value = ex['value'];
+            setname(value['operator_name'])
             const keys = Object.keys(value)
             const labels = keys.filter(k => !notNeeded.includes(k));
     

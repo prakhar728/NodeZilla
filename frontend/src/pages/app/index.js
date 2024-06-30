@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Table, Container, Row, Col, Button } from 'react-bootstrap';
+import { Table, Container, Row, Col, Button, Form } from 'react-bootstrap';
 import { GetCombinedAVSData } from '../../services/nodezilla';
 import Layout from '../../app/layout'; // Import the Layout component
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -9,6 +9,7 @@ import '../../app/globals.css';
 const HomePage = ({ allNodes }) => {
   const router = useRouter();
   const [avsList, setAvsList] = useState( allNodes || []);
+  const [operators, setoperators] = useState(allNodes || []);
 
   
   const handleNumOperatorsClick = (avs) => {
@@ -23,6 +24,15 @@ const HomePage = ({ allNodes }) => {
     setAvsList(allNodes);
   }
 
+  const filterToggle = (val) => {
+    let nodes = avsList;
+
+    if (val)
+      nodes = nodes.filter(f => f.status == 'active')
+
+    setoperators(nodes)
+  }
+
 
   useEffect(() => {
     fetchAllOperators()
@@ -34,10 +44,21 @@ const HomePage = ({ allNodes }) => {
       <Container fluid>
         <Row>
           <Col md={12}>
-            <h1 className="text-center my-4">AVS Explorer</h1>
+            <h1 className="text-center my-4">Operator Explorer</h1>
             <p className="text-center mb-4">
-              Welcome to the AVS Explorer, your one-stop destination to explore actively validated services. Discover detailed information about various services, their descriptions, and how to connect with them.
+              Welcome to the Operator Explorer, Explore operator nodes, both active and inactive. Discover and analyse their historic data, visualize their current state, know their description and more!
             </p>
+
+            <div className='operator-switch'>
+            <Form>
+              <Form.Check // prettier-ignore
+                type="switch"
+                id="custom-switch"
+                label="Hide inactive operators"
+                onChange={(e) => filterToggle(e.target.checked)}
+              />
+          </Form>
+            </div>
             <div className="table-responsive">
               <Table striped bordered hover responsive className="avs-table">
                 <thead>
@@ -51,7 +72,7 @@ const HomePage = ({ allNodes }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {avsList.map(avs => (
+                  {operators.map(avs => (
                     <tr key={avs.operator_contract_address} onClick={() => handleNumOperatorsClick(avs)} className='clickable-cell'>
                       <td>
                         <img src={avs.logo} alt={`${avs.operator_name} logo`} width={50} height={50} />

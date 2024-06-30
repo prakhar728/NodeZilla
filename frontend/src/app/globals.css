@@ -8,40 +8,32 @@
   justify-content: center;
   padding: 20px;
   position: relative;
-  background-image: url('/gradient_background.jpg');
   background-size: cover;
   background-position: center;
+  background-color: #131313;
 }
 
-.logo-container {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  padding: 10px;
-}
-
-.logo {
-  margin: 0 10px;
-}
 
 h1 {
   font-family: 'Arial', sans-serif;
-  font-size: 2.5rem;
-  color: #fff;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-size: 3rem;
+  color: azure !important; 
+  font-weight: 600 !important;
+
 }
 
 h2 {
   font-family: 'Arial', sans-serif;
   font-size: 2rem;
-  color: #aaa;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  color: azure !important; 
+  font-weight: 400 !important;
 }
 
 p {
   font-family: 'Arial', sans-serif;
   font-size: 1.25rem;
-  color: #868eec;
+  color: azure !important; 
+  font-weight: 300 !important;
 }
 
 .table-responsive {
@@ -77,19 +69,12 @@ p {
   color: blue;
 }
 
-.logo {
-  position: absolute;
-  width: 80px; /* Adjust the size */
+.logo-container {
+  width: 100%;
 }
 
-#eigenlayer-logo {
-  top: 20px;
-  left: 20px;
-}
-
-#dune-logo {
-  top: 20px;
-  right: 20px;
+#nodezilla-logo {
+  width: 160px;
 }
 
 .clickable-cell {
@@ -107,6 +92,7 @@ p {
   display: flex;
   justify-content: center;
   align-items: center;
+  background-color: #f0f0f0;
 }
 
 .toggle-switch {
@@ -115,10 +101,16 @@ p {
   align-items: center;
   justify-content: space-between;
   font-size: 36px;
+  color: azure !important; 
 }
 
 .switch-container {
   flex: 1;
   display: flex;
   justify-content: center;
+}
+
+.operator-switch {
+  font-size: 24px;
+  color: azure;
 }

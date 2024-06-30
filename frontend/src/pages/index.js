@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import '../style.css';
+import '../app/style.css';
 import Link from 'next/link';
 
 const index = () => {
@@ -29,11 +29,11 @@ const index = () => {
         <header>
           <div className="logo"><img  src={'./Name-n.png'}/></div>
           <ul className="flex gap-8 justify-center items-center px-6">
-            <a href="https://www.google.com">Solutions</a>  
-            <a href="https://www.google.com">Developers</a>  
-            <a href="https://www.google.com">Ecosystem</a>  
+            <a href="/app">App</a>  
+            <a href="#why-us">Why us?</a>  
+            <a href="#features">Features</a>  
             <a href="https://www.google.com">Blogs</a>  
-            <a href="https://www.google.com">About</a>  
+            <a href="https://github.com/prakhar728/NodeZilla">About</a>  
           </ul>
         </header>
         <section>
@@ -45,14 +45,14 @@ const index = () => {
               <button className="btn-secondary"><Link href="http://localhost:8000">Explore API</Link></button>
             </div>
             <div className="label">
-              <p>Total Volume</p>
+              <p>Total Volume Locked</p>
               <h2>${tvl}</h2>
             </div>
           </div>
         </section>
       </main>
 
-      <article className="cards-section">
+      <article className="cards-section" id="why-us">
         <h1>Why NodeZilla?</h1>
         <div className="card-container">
           <div className="card">
@@ -79,7 +79,7 @@ const index = () => {
         </div>
       </article>
       
-      <article className="features">
+      <article className="features" id="features">
         <div className="feature-wrapper">
           <div className="feature-info">
             <h2>1. Real Time Monitoring</h2>

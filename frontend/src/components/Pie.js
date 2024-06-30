@@ -3,7 +3,7 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { GetOperatorData } from '../services/nodezilla';
 
-const PieChartComponent = ({ operatorAddress }) => {
+const PieChartComponent = ({ operatorAddress, setname }) => {
   const [operatorData, setOperatorData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [chartData, setChartData] = useState(null);
@@ -24,9 +24,21 @@ const PieChartComponent = ({ operatorAddress }) => {
   }, []);
 
   useEffect(() => {
+    let interval;
+
     if (operatorAddress) {
       fetchOperatorData(operatorAddress);
+
+      interval = setInterval(() => {
+        fetchOperatorData(operatorAddress);
+      }, 2000);
     }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [operatorAddress, fetchOperatorData]);
 
   useEffect(() => {
@@ -35,6 +47,7 @@ const PieChartComponent = ({ operatorAddress }) => {
 
       if (timeSeries.length) {
         const latestEntry = timeSeries[timeSeries.length - 1].value;
+        setname(latestEntry['operator_name'])
 
         const labels = Object.keys(latestEntry).filter(key => key.endsWith('_TVL') && latestEntry[key] > 0 && key !== 'total_TVL');
         const data = labels.map(label => latestEntry[label]);
