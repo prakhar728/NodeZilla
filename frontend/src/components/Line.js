@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { GetOperatorData } from '../services/nodezilla';
+import Loading from '../components/Loading'; // Import the Loading component
 
 const LineComponent = ({ operatorAddress, setname }) => {
     const [operatorData, setOperatorData] = useState([]);
@@ -10,111 +11,108 @@ const LineComponent = ({ operatorAddress, setname }) => {
     const [timestamps, settimestamps] = useState([]);
     const [datasets, setdatasets] = useState([]);
 
-
     ChartJS.register(...registerables);
 
     const options = {
         responsive: true,
         plugins: {
             legend: {
-            position: 'top',
+                position: 'top',
             },
             title: {
-            display: true,
-            text: 'TVL Data Over Time',
+                display: true,
+                text: 'TVL Data Over Time',
             },
         },
         scales: {
             xAxis: {
-            title: {
-                display: true,
-                text: 'Timestamp',
-            },
+                title: {
+                    display: true,
+                    text: 'Timestamp',
+                },
             },
             yAxis: {
-            title: {
-                display: true,
-                text: 'TVL',
-            },
+                title: {
+                    display: true,
+                    text: 'TVL',
+                },
             },
         },
     };
 
     const fetchOperatorsData = useCallback(async (operatorAddress) => {
-    try {
-        setLoading(true);
-        const data = await GetOperatorData(operatorAddress);
-
-        setOperatorData(data);
-    } catch (error) {
-        console.error("Error fetching operators' data:", error);
-    } finally {
-        setLoading(false);
-    }
+        try {
+            setLoading(true);
+            const data = await GetOperatorData(operatorAddress);
+            setOperatorData(data);
+        } catch (error) {
+            console.error("Error fetching operators' data:", error);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
-      let interval;
-  
-      if (operatorAddress) {
-        fetchOperatorsData(operatorAddress);
-  
-        interval = setInterval(() => {
-          fetchOperatorsData(operatorAddress);
-        }, 30000);
-      }
-  
-      return () => {
-        if (interval) {
-          clearInterval(interval);
-        }
-      };
-    }, [operatorAddress, fetchOperatorsData]);
+        let interval;
 
+        if (operatorAddress) {
+            fetchOperatorsData(operatorAddress);
+
+            interval = setInterval(() => {
+                fetchOperatorsData(operatorAddress);
+            }, 30000);
+        }
+
+        return () => {
+            if (interval) {
+                clearInterval(interval);
+            }
+        };
+    }, [operatorAddress, fetchOperatorsData]);
 
     useEffect(() => {
         if (operatorData) {
-          let time_series = operatorData.time_series;
-      
-          if (time_series && time_series.length) {
-            let values = time_series.map(t => {
-              let val = t['value']
-              val['timestamp'] = t['timestamp'];
-              delete val['total_TVL']
-              return val;
-            });
-    
-            const notNeeded = ['operator_contract_address', 'operator_name', 'num_stakers', 'timestamp'];
-    
-            // Extracting labels
-            const ex = time_series[0];
-            const value = ex['value'];
-            setname(value['operator_name'])
-            const keys = Object.keys(value)
-            const labels = keys.filter(k => !notNeeded.includes(k));
-    
-            // Extracting time series values
-            const datasets = labels.map((key, index) => ({
-              label: key,
-              data: values.map(entry => {
-                let d = entry[key]
-                delete d['timestamp']
-                delete d['num_stakers']
-                return d
-              }),
-              borderColor: `hsl(${index * 40}, 70%, 50%)`, // Generate a color based on index
-              backgroundColor: `hsla(${index * 40}, 70%, 50%, 0.2)`,
-              fill: false,
-            }));
-    
-            setdatasets(datasets)
-    
-            // Extracting timestamps
-            let ts = time_series.map(t => formatDate(t['value']['timestamp']));
-            settimestamps(ts);
-          }
-        } 
-      }, [operatorData])
+            let time_series = operatorData.time_series;
+
+            if (time_series && time_series.length) {
+                let values = time_series.map(t => {
+                    let val = t['value'];
+                    val['timestamp'] = t['timestamp'];
+                    delete val['total_TVL'];
+                    return val;
+                });
+
+                const notNeeded = ['operator_contract_address', 'operator_name', 'num_stakers', 'timestamp'];
+
+                // Extracting labels
+                const ex = time_series[0];
+                const value = ex['value'];
+                setname(value['operator_name']);
+                const keys = Object.keys(value);
+                const labels = keys.filter(k => !notNeeded.includes(k));
+
+                // Extracting time series values
+                const datasets = labels.map((key, index) => ({
+                    label: key,
+                    data: values.map(entry => {
+                        let d = entry[key];
+                        delete d['timestamp'];
+                        delete d['num_stakers'];
+                        return d;
+                    }),
+                    borderColor: `hsl(${index * 40}, 70%, 50%)`, // Generate a color based on index
+                    backgroundColor: `hsla(${index * 40}, 70%, 50%, 0.2)`,
+                    fill: false,
+                }));
+
+                setdatasets(datasets);
+
+                // Extracting timestamps
+                let ts = time_series.map(t => formatDate(t['value']['timestamp']));
+                settimestamps(ts);
+            }
+        }
+    }, [operatorData]);
 
     const formatDate = (dateString) => {
         if (!dateString) return 'Invalid Date';
@@ -123,23 +121,25 @@ const LineComponent = ({ operatorAddress, setname }) => {
     };
 
     useEffect(() => {
-    if (timestamps && timestamps.length) {
-        let cData = {
-        labels: timestamps,
-        datasets: datasets,
+        if (timestamps && timestamps.length) {
+            let cData = {
+                labels: timestamps,
+                datasets: datasets,
+            };
+
+            setChartData(cData);
         }
+    }, [timestamps]);
 
-        setChartData(cData);
-    }
-    }, [timestamps])
-
-  return (
-    <>
-    {chartData && 
-        <Line data={chartData} options={options} />
-    }
-    </>
-  )
+    return (
+        <>
+            {loading ? (
+                <Loading />
+            ) : (
+                chartData && <Line data={chartData} options={options} />
+            )}
+        </>
+    );
 }
 
-export default LineComponent
+export default LineComponent;

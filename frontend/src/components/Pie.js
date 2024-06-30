@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { GetOperatorData } from '../services/nodezilla';
+import Loading from '../components/Loading'; // Import the Loading component
 
 const PieChartComponent = ({ operatorAddress, setname }) => {
   const [operatorData, setOperatorData] = useState([]);
@@ -47,7 +48,7 @@ const PieChartComponent = ({ operatorAddress, setname }) => {
 
       if (timeSeries.length) {
         const latestEntry = timeSeries[timeSeries.length - 1].value;
-        setname(latestEntry['operator_name'])
+        setname(latestEntry['operator_name']);
 
         const labels = Object.keys(latestEntry).filter(key => key.endsWith('_TVL') && latestEntry[key] > 0 && key !== 'total_TVL');
         const data = labels.map(label => latestEntry[label]);
@@ -85,9 +86,11 @@ const PieChartComponent = ({ operatorAddress, setname }) => {
 
   return (
     <>
-      {chartData && 
-        <Pie data={chartData} options={options} />
-      }
+      {loading ? (
+        <Loading />
+      ) : (
+        chartData && <Pie data={chartData} options={options} />
+      )}
     </>
   );
 };

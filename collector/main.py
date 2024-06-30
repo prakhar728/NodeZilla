@@ -1,94 +1,200 @@
+import requests
 import os
-from fastapi import FastAPI, Body, HTTPException
-from pymongo import MongoClient
-from pydantic import BaseModel, BeforeValidator, Field
-from bson import ObjectId  # Import ObjectId from bson
-from typing import Annotated, List, Dict, Optional
+from dotenv import load_dotenv
+from datetime import datetime
+import threading
+import time
+# import pytz
 
-PyObjectId = Annotated[str, BeforeValidator(str)]
+import DB as db
 
-class NodeSchema(BaseModel):
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    name: str
-    # Add other fields here
-    # For example:
-    # description: str
-    # created_at: datetime
+load_dotenv()
 
-app = FastAPI(
-    title="Eigner Layer Metrics API",
-    summary="An application to get metrics for operator AVS in Eigner Layer",
-)
+# URL of the API endpoint
+DUNE_URL = "https://api.dune.com/api"                                   #Base URL
+ALL_OPS = "/v1/eigenlayer/operator-metadata"    #All Operators
+OP_METRIC = "/v1/eigenlayer/operator-stats"     # Metric for Operators
 
-# Helper function to convert Pydantic model to dictionary
-def to_mongo_dict(data: NodeSchema) -> dict:
-    return data.dict()
+# operator_contract_address in ('0x09e6eb09213bdd3698bd8afb43ec3cb0ecff683e', '0xd172a86a0f250aec23ee19c759a8e73621fe3c10')
 
-# Helper function to convert MongoDB document to a dictionary
-def mongo_dict(data: dict) -> dict:
-    data['id'] = str(data['_id'])
-    del data['_id']
-    return data
+DUNE_KEY = os.getenv('DUNE_API_KEY')
 
-# Endpoint to create a new Node document
-@app.post("/nodes", response_model=NodeSchema)
-async def create_node(node: NodeSchema = Body(...)):
+# Custom headers
+headers = {
+    'X-DUNE-API-KEY': DUNE_KEY,
+}
+
+
+############################################# Helper ############################
+
+
+def format_time(timestamp_str):
+  """
+  This function removes microseconds from a timestamp string.
+
+  Args:
+      timestamp_str (str): The timestamp string in ISO 8601 format (e.g., 2024-06-25T16:15:49.740032Z).
+
+  Returns:
+      str: The timestamp string with microseconds clipped (e.g., 2024-06-25T16:15:49Z).
+  """
+  # Split the datetime and timezone parts
+  parts = timestamp_str.split("Z")
+  datetime_part = parts[0]
+
+  # Clip microseconds (if any)
+  datetime_part = datetime_part.rsplit(".", 1)[0]  # Remove everything after the last dot
+  # Combine the parts and return the modified string
+
+  return datetime.fromisoformat(datetime_part)
+
+
+############################################# Functions ############################
+
+# Fetch all the metadata for 300 operators and store it in the database. This function should run once to populate only a 100 operators
+def get_all_operators():
+    querystring = { "limit" : "300" }
+    request_url = DUNE_URL + ALL_OPS
+
     try:
-        new_node = nodes_collection.insert_one(
-            node.model_dump(by_alias=True, exclude=["id"])
-        )
+        response = requests.get(request_url, headers=headers, params=querystring)
+        res = response.json()
+        nodes = res['result']['rows']
 
-        inserted_node = nodes_collection.find_one(
-            {"_id": new_node.inserted_id}
-        )
+        for node in nodes:
+            node['status'] = 'inactive'
+            inserted_node = db.nodes_collection.insert_one(
+                node
+            )
+        
+        print("Populated DB with all the nodes")
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        print(f"Other error occurred: {err}")
 
-        return inserted_node
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint to get all Node documents
-@app.get("/nodes", response_model=List[Dict[str, str]])
-async def get_all_nodes():
-    try:
-        nodes = nodes_collection.find()
-        nodes_list = [mongo_dict(node) for node in nodes]
-        return nodes_list
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint to get a Node document by ID
-@app.get("/nodes/{node_id}", response_model=Dict[str, str])
-async def get_node_by_id(node_id: str):
-    try:
-        node = nodes_collection.find_one({"_id": ObjectId(node_id)})
-        if node:
-            return mongo_dict(node)
-        else:
-            raise HTTPException(status_code=404, detail="Node not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def refresh_operators():
+    request_url = DUNE_URL + ALL_OPS
+    
+    while True:
+        try:
+            all_nodes = db.nodes_collection.find()
 
-# Endpoint to update a Node document by ID
-@app.put("/nodes/{node_id}", response_model=Dict[str, str])
-async def update_node(node_id: str, node: NodeSchema = Body(...)):
-    node_data = to_mongo_dict(node)
-    try:
-        updated_node = nodes_collection.update_one(
-            {"_id": ObjectId(node_id)}, {"$set": node_data}
-        )
-        if updated_node.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Node not found")
-        return {"message": "Node updated successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            temp = []
 
-# Endpoint to delete a Node document by ID
-@app.delete("/nodes/{node_id}", response_model=Dict[str, str])
-async def delete_node(node_id: str):
-    try:
-        delete_result = nodes_collection.delete_one({"_id": ObjectId(node_id)})
-        if delete_result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Node not found")
-        return {"message": "Node deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            for node in all_nodes:
+
+                temp.append(node['operator_contract_address'])
+
+                if len(temp) == 1:
+                    quoted_elements = [f"'{elem}'" for elem in temp]
+                    # Join the quoted elements with a comma and space
+                    joined_elements = ', '.join(quoted_elements)
+
+                    # Enclose the joined string in parentheses
+                    result = f"({joined_elements})"
+
+                    querystring = { 
+                        "limit" : "1",
+                        "filters": "operator_contract_address in" + result,
+                    }
+
+                    response = requests.get(request_url, headers=headers, params=querystring)
+                    res = response.json()
+                    nodes = res['result']['rows']
+
+                    for node in nodes:
+                        updated_node = db.nodes_collection.update_one(filter ={
+                            'operator_contract_address': node['operator_contract_address']
+                        }, 
+                        update={
+                            "$set": node
+                        }
+                        )
+                    temp = []
+                    time.sleep(2)
+            print("Refreshed all nodes inside db")
+            time.sleep(20)
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except Exception as err:
+            print(f"Error refreshing nodes: {err}")
+
+
+def populate_time_series():
+    request_url = DUNE_URL + OP_METRIC
+    while True:
+        try:
+            all_nodes = db.nodes_collection.find()
+
+            temp_address = []
+
+            for node in all_nodes:
+
+                temp_address.append(node['operator_contract_address'])
+                
+                if len(temp_address) == 10:
+                    
+                    quoted_elements = [f"'{elem}'" for elem in temp_address]
+                    # Join the quoted elements with a comma and space
+                    joined_elements = ', '.join(quoted_elements)
+
+                    # Enclose the joined string in parentheses
+                    result = f"({joined_elements})"
+                    querystring = { 
+                        "limit" : "10",
+                        "filters": "operator_contract_address in " + result,
+                    }
+
+                    response = requests.get(request_url, headers=headers, params=querystring)
+
+                    res = response.json()
+
+                    timestamp = format_time(res['execution_ended_at'])
+                    values = res['result']['rows']
+                    result = db.nodes_collection.update_many({}, {'$unset': {"staus": ""}})
+                    for value in values:
+                        address = value['operator_contract_address']
+
+                        collection = db.get_db_for_tsdb(address)
+
+                        filter = {"operator_contract_address": address}
+
+                        update = {"$set": {"status": "active"}}
+
+                        db.nodes_collection.update_one(filter, update)
+
+                        new_t = collection.insert_one({
+                            'timestamp': timestamp,
+                            'address': address,
+                            'value': value
+                        })
+
+                    temp_address = []
+                    print("batch success")
+            print("Populated time series db")
+            time.sleep(20) 
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except Exception as err:
+            print(f"error with time seriess: {err}")
+
+
+# get_all_operators()   #one time to populate db with info
+# refresh_operators()   # refresh metadata for operators 10 at a time
+# populate_time_series()
+
+
+def main():
+    thread1 = threading.Thread(target=populate_time_series)
+    # thread2 = threading.Thread(target=refresh_operators)
+
+    # Start the threads
+    thread1.start()
+    # thread2.start()
+
+
+if __name__ == "__main__":
+    main()

@@ -5,23 +5,24 @@ import { GetCombinedAVSData } from '../../services/nodezilla';
 import Layout from '../../app/layout'; // Import the Layout component
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../../app/globals.css';
+import Loading from '../../components/Loading';
 
 const HomePage = ({ allNodes }) => {
   const router = useRouter();
-  const [avsList, setAvsList] = useState( allNodes || []);
+  const [avsList, setAvsList] = useState(allNodes || []);
   const [operators, setoperators] = useState(allNodes || []);
-
+  const [loading, setloading] = useState(true);
   
   const handleNumOperatorsClick = (avs) => {
     if (avs.status == 'active')
       router.push(`/app/avs/${avs.operator_contract_address}`);
   };
 
-
-  const fetchAllOperators = async() => {
+  const fetchAllOperators = async () => {
     const allNodes = await GetCombinedAVSData();
-
     setAvsList(allNodes);
+    setoperators(allNodes);
+    setloading(false);
   }
 
   const filterToggle = (val) => {
@@ -33,8 +34,15 @@ const HomePage = ({ allNodes }) => {
     setoperators(nodes)
   }
 
-
-   return (
+  useEffect(() => {
+    if (allNodes && allNodes.length) {
+      setloading(false);
+    } else {
+      fetchAllOperators();
+    }
+  }, [allNodes]);
+  
+  return (
     <Layout>  {/* Wrap the content with Layout */}
       <Container fluid>
         <Row>
@@ -45,45 +53,48 @@ const HomePage = ({ allNodes }) => {
             </p>
 
             <div className='operator-switch'>
-            <Form>
-              <Form.Check // prettier-ignore
-                type="switch"
-                id="custom-switch"
-                label="Hide inactive operators"
-                onChange={(e) => filterToggle(e.target.checked)}
-              />
-          </Form>
+              <Form>
+                <Form.Check // prettier-ignore
+                  type="switch"
+                  id="custom-switch"
+                  label="Hide inactive operators"
+                  onChange={(e) => filterToggle(e.target.checked)}
+                />
+              </Form>
             </div>
-            <div className="table-responsive">
-              <Table striped bordered hover responsive className="avs-table">
-                <thead>
-                  <tr>
-                    <th>Logo</th>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Twitter</th>
-                    <th>Website</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {operators.map(avs => (
-                    <tr key={avs.operator_contract_address} onClick={() => handleNumOperatorsClick(avs)} className='clickable-cell'>
-                      <td>
-                        <img src={avs.logo} alt={`${avs.operator_name} logo`} width={50} height={50} />
-                      </td>
-                      <td>{avs.operator_name}</td>
-                      <td>{avs.description}</td>
-                      <td><a href={avs.twitter} target="_blank" rel="noopener noreferrer">Twitter</a></td>
-                      <td><a href={avs.website} target="_blank" rel="noopener noreferrer">Website</a></td>
-                      <td>
-                        {avs.status}
-                      </td>
+            
+            {loading ? (
+              <Loading />
+            ) : (
+              <div className="table-responsive">
+                <Table striped bordered hover responsive className="avs-table">
+                  <thead>
+                    <tr>
+                      <th>Logo</th>
+                      <th>Name</th>
+                      <th>Description</th>
+                      <th>Twitter</th>
+                      <th>Website</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {operators.map(avs => (
+                      <tr key={avs.operator_contract_address} onClick={() => handleNumOperatorsClick(avs)} className='clickable-cell'>
+                        <td>
+                          <img src={avs.logo} alt={`${avs.operator_name} logo`} width={50} height={50} />
+                        </td>
+                        <td>{avs.operator_name}</td>
+                        <td>{avs.description}</td>
+                        <td><a href={avs.twitter} target="_blank" rel="noopener noreferrer">Twitter</a></td>
+                        <td><a href={avs.website} target="_blank" rel="noopener noreferrer">Website</a></td>
+                        <td>{avs.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            )}
           </Col>
         </Row>
       </Container>
