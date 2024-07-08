@@ -110,7 +110,10 @@ p {
   justify-content: center;
 }
 
-.operator-switch {
+.form-controls {
   font-size: 24px;
   color: azure;
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
 }

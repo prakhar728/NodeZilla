@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Table, Container, Row, Col, Button, Form } from 'react-bootstrap';
+import Fuse from 'fuse.js'
+
 import { GetCombinedAVSData } from '../../services/nodezilla';
 import Layout from '../../app/layout'; // Import the Layout component
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -12,7 +14,15 @@ const HomePage = ({ allNodes }) => {
   const [avsList, setAvsList] = useState(allNodes || []);
   const [operators, setoperators] = useState(allNodes || []);
   const [loading, setloading] = useState(true);
-  
+  const [searchKey, setsearchKey] = useState("");
+
+  const options = {
+    threshold: 0.3,
+    keys: ['operator_name', 'operator_contract_address']
+  }
+
+  const fuse = new Fuse(allNodes, options);
+
   const handleNumOperatorsClick = (avs) => {
     if (avs.status == 'active')
       router.push(`/app/avs/${avs.operator_contract_address}`);
@@ -34,6 +44,23 @@ const HomePage = ({ allNodes }) => {
     setoperators(nodes)
   }
 
+
+  const handleSearch = async(e) => {
+    if (e.keyCode == 13) {
+      e.preventDefault();
+
+      if (!searchKey) {
+        setoperators(avsList);
+      } else {
+        let results = fuse.search(searchKey);
+        results= results.map(r => r.item);
+  
+        setoperators(results)
+      }
+
+    }
+  }
+
   useEffect(() => {
     if (allNodes && allNodes.length) {
       setloading(false);
@@ -52,7 +79,7 @@ const HomePage = ({ allNodes }) => {
               Welcome to the Operator Explorer, Explore operator nodes, both active and inactive. Discover and analyse their historic data, visualize their current state, know their description and more!
             </p>
 
-            <div className='operator-switch'>
+            <div className='form-controls'>
               <Form>
                 <Form.Check // prettier-ignore
                   type="switch"
@@ -61,6 +88,12 @@ const HomePage = ({ allNodes }) => {
                   onChange={(e) => filterToggle(e.target.checked)}
                 />
               </Form>
+
+              <Form className="mb-3 w-75">
+              <Form.Group className="mb-3 w-100" controlId="searchbar">
+                <Form.Control type="search" placeholder="Search for Opertor address or Name" onChange={(e) => setsearchKey(e.target.value)} value={searchKey} onKeyDown={handleSearch}/>
+              </Form.Group>
+          </Form>
             </div>
             
             {loading ? (
@@ -105,7 +138,7 @@ const HomePage = ({ allNodes }) => {
 export async function getStaticProps() {
   try {
     const allNodes = await GetCombinedAVSData();
-
+   
     return { props: { allNodes: allNodes } };
   } catch (error) {
     console.error('Error fetching AVS data:', error);
