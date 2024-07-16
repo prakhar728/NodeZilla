@@ -105,6 +105,7 @@ const HomePage = ({ allNodes }) => {
                     <tr>
                       <th>Logo</th>
                       <th>Name</th>
+                      <th>Address</th>
                       <th>Description</th>
                       <th>Twitter</th>
                       <th>Website</th>
@@ -118,6 +119,7 @@ const HomePage = ({ allNodes }) => {
                           <img src={avs.logo} alt={`${avs.operator_name} logo`} width={50} height={50} />
                         </td>
                         <td>{avs.operator_name}</td>
+                        <td>{avs.operator_contract_address}</td>
                         <td>{avs.description}</td>
                         <td><a href={avs.twitter} target="_blank" rel="noopener noreferrer">Twitter</a></td>
                         <td><a href={avs.website} target="_blank" rel="noopener noreferrer">Website</a></td>
