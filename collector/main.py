@@ -1,23 +1,25 @@
-import requests
 import os
-from dotenv import load_dotenv
-from datetime import datetime
+import requests
 import threading
 import time
-# import pytz
+from dotenv import load_dotenv
+from datetime import datetime
+import logging
+import config
 
 import DB as db
 
+# Load environment variables
 load_dotenv()
 
-# URL of the API endpoint
-DUNE_URL = "https://api.dune.com/api"                                   #Base URL
-ALL_OPS = "/v1/eigenlayer/operator-metadata"    #All Operators
-OP_METRIC = "/v1/eigenlayer/operator-stats"     # Metric for Operators
+# Configure logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
-# operator_contract_address in ('0x09e6eb09213bdd3698bd8afb43ec3cb0ecff683e', '0xd172a86a0f250aec23ee19c759a8e73621fe3c10')
-
-DUNE_KEY = os.getenv('DUNE_API_KEY')
+DUNE_URL = config.DUNE_URL
+ALL_OPS = config.ALL_OPS
+OP_METRIC = config.OP_METRIC
+DUNE_KEY = os.environ['DUNE_API_KEY']
 
 # Custom headers
 headers = {
@@ -26,101 +28,80 @@ headers = {
 
 
 ############################################# Helper ############################
-
-
 def format_time(timestamp_str):
-  """
-  This function removes microseconds from a timestamp string.
-
-  Args:
-      timestamp_str (str): The timestamp string in ISO 8601 format (e.g., 2024-06-25T16:15:49.740032Z).
-
-  Returns:
-      str: The timestamp string with microseconds clipped (e.g., 2024-06-25T16:15:49Z).
-  """
-  # Split the datetime and timezone parts
-  parts = timestamp_str.split("Z")
-  datetime_part = parts[0]
-
-  # Clip microseconds (if any)
-  datetime_part = datetime_part.rsplit(".", 1)[0]  # Remove everything after the last dot
-  # Combine the parts and return the modified string
-
-  return datetime.fromisoformat(datetime_part)
+    try:
+        datetime_part = timestamp_str.split("Z")[0]
+        datetime_part = datetime_part.rsplit(".", 1)[0]
+        return datetime.fromisoformat(datetime_part)
+    except Exception as e:
+        logging.error(f"Error formatting time: {e}")
+        return None
 
 
 ############################################# Functions ############################
-
-# Fetch all the metadata for 300 operators and store it in the database. This function should run once to populate only a 100 operators
 def get_all_operators():
-    querystring = { "limit" : "300" }
+    querystring = {"limit": "300"}
     request_url = DUNE_URL + ALL_OPS
 
     try:
-        response = requests.get(request_url, headers=headers, params=querystring)
-        res = response.json()
-        nodes = res['result']['rows']
+        response = requests.get(request_url,
+                                headers=headers,
+                                params=querystring)
+        response.raise_for_status()
+        nodes = response.json()['result']['rows']
 
         for node in nodes:
             node['status'] = 'inactive'
-            inserted_node = db.nodes_collection.insert_one(
-                node
-            )
-        
-        print("Populated DB with all the nodes")
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        print(f"Other error occurred: {err}")
+            db.nodes_collection.insert_one(node)
 
+        logging.info("Populated DB with all the nodes")
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        logging.error(f"Other error occurred: {err}")
 
 
 def refresh_operators():
     request_url = DUNE_URL + ALL_OPS
-    
+
     while True:
         try:
             all_nodes = db.nodes_collection.find()
-
             temp = []
 
             for node in all_nodes:
-
                 temp.append(node['operator_contract_address'])
 
                 if len(temp) == 1:
                     quoted_elements = [f"'{elem}'" for elem in temp]
-                    # Join the quoted elements with a comma and space
                     joined_elements = ', '.join(quoted_elements)
-
-                    # Enclose the joined string in parentheses
                     result = f"({joined_elements})"
-
-                    querystring = { 
-                        "limit" : "1",
+                    querystring = {
+                        "limit": "1",
                         "filters": "operator_contract_address in" + result,
                     }
 
-                    response = requests.get(request_url, headers=headers, params=querystring)
-                    res = response.json()
-                    nodes = res['result']['rows']
+                    response = requests.get(request_url,
+                                            headers=headers,
+                                            params=querystring)
+                    response.raise_for_status()
+                    nodes = response.json()['result']['rows']
 
                     for node in nodes:
-                        updated_node = db.nodes_collection.update_one(filter ={
-                            'operator_contract_address': node['operator_contract_address']
-                        }, 
-                        update={
-                            "$set": node
-                        }
-                        )
+                        db.nodes_collection.update_one(
+                            {
+                                'operator_contract_address':
+                                node['operator_contract_address']
+                            }, {"$set": node})
                     temp = []
                     time.sleep(2)
-            print("Refreshed all nodes inside db")
+
+            logging.info("Refreshed all nodes inside db")
             time.sleep(20)
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logging.error(f"HTTP error occurred: {http_err}")
         except Exception as err:
-            print(f"Error refreshing nodes: {err}")
+            logging.error(f"Error refreshing nodes: {err}")
 
 
 def populate_time_series():
@@ -128,63 +109,58 @@ def populate_time_series():
     while True:
         try:
             all_nodes = db.nodes_collection.find()
-
             temp_address = []
 
             for node in all_nodes:
-
                 temp_address.append(node['operator_contract_address'])
-                
-                if len(temp_address) == 10:
-                    
-                    quoted_elements = [f"'{elem}'" for elem in temp_address]
-                    # Join the quoted elements with a comma and space
-                    joined_elements = ', '.join(quoted_elements)
 
-                    # Enclose the joined string in parentheses
+                if len(temp_address) == 10:
+                    quoted_elements = [f"'{elem}'" for elem in temp_address]
+                    joined_elements = ', '.join(quoted_elements)
                     result = f"({joined_elements})"
-                    querystring = { 
-                        "limit" : "10",
+                    querystring = {
+                        "limit": "10",
                         "filters": "operator_contract_address in " + result,
                     }
 
-                    response = requests.get(request_url, headers=headers, params=querystring)
-
+                    response = requests.get(request_url,
+                                            headers=headers,
+                                            params=querystring)
+                    response.raise_for_status()
                     res = response.json()
 
                     timestamp = format_time(res['execution_ended_at'])
+                    if not timestamp:
+                        continue
                     values = res['result']['rows']
-                    result = db.nodes_collection.update_many({}, {'$unset': {"staus": ""}})
+
+                    db.nodes_collection.update_many({},
+                                                    {'$unset': {
+                                                        "status": ""
+                                                    }})
                     for value in values:
                         address = value['operator_contract_address']
-
                         collection = db.get_db_for_tsdb(address)
-
-                        filter = {"operator_contract_address": address}
-
-                        update = {"$set": {"status": "active"}}
-
-                        db.nodes_collection.update_one(filter, update)
-
-                        new_t = collection.insert_one({
+                        db.nodes_collection.update_one(
+                            {"operator_contract_address": address},
+                            {"$set": {
+                                "status": "active"
+                            }})
+                        collection.insert_one({
                             'timestamp': timestamp,
                             'address': address,
                             'value': value
                         })
 
                     temp_address = []
-                    print("batch success")
-            print("Populated time series db")
-            time.sleep(20) 
+                    logging.info("Batch success")
+
+            logging.info("Populated time series db")
+            time.sleep(900)
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logging.error(f"HTTP error occurred: {http_err}")
         except Exception as err:
-            print(f"error with time seriess: {err}")
-
-
-# get_all_operators()   #one time to populate db with info
-# refresh_operators()   # refresh metadata for operators 10 at a time
-# populate_time_series()
+            logging.error(f"Error with time series: {err}")
 
 
 def main():
